@@ -35,6 +35,13 @@
    python app.py
    ```
 
+5. **Run the Front End**
+   ```bash
+   cd react_fe
+   npm ci
+   npm run dev
+   ```
+
 ## Project Structure
 ```
 .
