@@ -1,5 +1,8 @@
 # Audio Similarity Project
 
+<img width="955" alt="Screenshot 2025-05-12 163222" src="https://github.com/user-attachments/assets/a138ea4c-03fa-4011-8d75-e15d166e4782" />
+
+
 ## Requirements
 - Python 3.11.0rc2 or higher
 
@@ -57,3 +60,5 @@
 zzmitzz[@github]
 ## Contributing
 Holy thanks to Cursor
+
+
