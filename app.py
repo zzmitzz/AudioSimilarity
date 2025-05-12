@@ -1,0 +1,66 @@
+from flask import Flask, request, jsonify, send_file
+import os
+from werkzeug.utils import secure_filename
+import worker as worker
+
+app = Flask(__name__)
+
+# Configure upload folder
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Initialize worker agent
+cndpt_directory = "CNDPT-20250509T093006Z-1-001/CNDPT"
+agent = worker.Worker(cndpt_directory)
+
+@app.route('/api/find-similar', methods=['POST'])
+def find_similar_files():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if file:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        try:
+            # Find similar files
+            similar_files = agent.find_similar_files(filepath, 5)
+            
+            # Clean up the uploaded file
+            os.remove(filepath)
+            
+            return jsonify({
+                'similar_files': similar_files
+            })
+        except Exception as e:
+            # Clean up the uploaded file in case of error
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/audio/<path:filename>')
+def get_audio(filename):
+    try:
+        # Ensure the filename is secure and within allowed directory
+        safe_filename = secure_filename(filename)
+        file_path = os.path.join(cndpt_directory, safe_filename)
+        
+        # Check if file exists and is within allowed directory
+        if not os.path.exists(file_path) or not os.path.abspath(file_path).startswith(os.path.abspath(cndpt_directory)):
+            return jsonify({'error': 'File not found'}), 404
+            
+        return send_file(file_path, mimetype='audio/wav')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True) 
