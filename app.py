@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
 import worker as worker
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
@@ -35,11 +37,17 @@ def find_similar_files():
             # Find similar files
             similar_files = agent.find_similar_files(filepath, 5)
             
+            # Normalize file paths to use forward slashes
+            normalized_similar_files = [
+                [path.replace('\\', '/'), similarity]
+                for path, similarity in similar_files
+            ]
+            
             # Clean up the uploaded file
             os.remove(filepath)
             
             return jsonify({
-                'similar_files': similar_files
+                'similar_files': normalized_similar_files
             })
         except Exception as e:
             # Clean up the uploaded file in case of error
@@ -47,12 +55,13 @@ def find_similar_files():
                 os.remove(filepath)
             return jsonify({'error': str(e)}), 500
 
-@app.route('/api/audio/<path:filename>')
-def get_audio(filename):
+@app.route('/api/audio', methods=['POST'])
+def get_audio():
     try:
-        # Ensure the filename is secure and within allowed directory
-        safe_filename = secure_filename(filename)
-        file_path = os.path.join(cndpt_directory, safe_filename)
+        if not request.json or 'filename' not in request.json:
+            return jsonify({'error': 'No filename provided in request body'}), 400
+            
+        file_path = request.json['filename']
         
         # Check if file exists and is within allowed directory
         if not os.path.exists(file_path) or not os.path.abspath(file_path).startswith(os.path.abspath(cndpt_directory)):
